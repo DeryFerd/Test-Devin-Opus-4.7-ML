@@ -1,0 +1,168 @@
+{
+  "n_rows": 1200,
+  "n_cols": 13,
+  "columns": [
+    "age",
+    "gender",
+    "daily_social_media_hours",
+    "platform_usage",
+    "sleep_hours",
+    "screen_time_before_sleep",
+    "academic_performance",
+    "physical_activity",
+    "social_interaction_level",
+    "stress_level",
+    "anxiety_level",
+    "addiction_level",
+    "depression_label"
+  ],
+  "dtypes": {
+    "age": "int64",
+    "gender": "object",
+    "daily_social_media_hours": "float64",
+    "platform_usage": "object",
+    "sleep_hours": "float64",
+    "screen_time_before_sleep": "float64",
+    "academic_performance": "float64",
+    "physical_activity": "float64",
+    "social_interaction_level": "object",
+    "stress_level": "int64",
+    "anxiety_level": "int64",
+    "addiction_level": "int64",
+    "depression_label": "int64"
+  },
+  "missing": {
+    "age": 0,
+    "gender": 0,
+    "daily_social_media_hours": 0,
+    "platform_usage": 0,
+    "sleep_hours": 0,
+    "screen_time_before_sleep": 0,
+    "academic_performance": 0,
+    "physical_activity": 0,
+    "social_interaction_level": 0,
+    "stress_level": 0,
+    "anxiety_level": 0,
+    "addiction_level": 0,
+    "depression_label": 0
+  },
+  "duplicates": 0,
+  "target_distribution": {
+    "0": 1169,
+    "1": 31
+  },
+  "positive_rate": 0.025833333333333333,
+  "numeric_describe": {
+    "age": {
+      "count": 1200.0,
+      "mean": 15.928333333333333,
+      "std": 2.0219472745861995,
+      "min": 13.0,
+      "25%": 14.0,
+      "50%": 16.0,
+      "75%": 18.0,
+      "max": 19.0
+    },
+    "daily_social_media_hours": {
+      "count": 1200.0,
+      "mean": 4.536666666666667,
+      "std": 2.02959888037881,
+      "min": 1.0,
+      "25%": 2.8,
+      "50%": 4.5,
+      "75%": 6.3,
+      "max": 8.0
+    },
+    "sleep_hours": {
+      "count": 1200.0,
+      "mean": 6.449416666666667,
+      "std": 1.4426771725657908,
+      "min": 4.0,
+      "25%": 5.2,
+      "50%": 6.5,
+      "75%": 7.6,
+      "max": 9.0
+    },
+    "screen_time_before_sleep": {
+      "count": 1200.0,
+      "mean": 1.740333333333333,
+      "std": 0.7166597681198451,
+      "min": 0.5,
+      "25%": 1.1,
+      "50%": 1.8,
+      "75%": 2.4,
+      "max": 3.0
+    },
+    "academic_performance": {
+      "count": 1200.0,
+      "mean": 2.9903833333333334,
+      "std": 0.5767575117948028,
+      "min": 2.0,
+      "25%": 2.5,
+      "50%": 2.99,
+      "75%": 3.48,
+      "max": 4.0
+    },
+    "physical_activity": {
+      "count": 1200.0,
+      "mean": 1.0145000000000002,
+      "std": 0.5821845632799229,
+      "min": 0.0,
+      "25%": 0.5,
+      "50%": 1.0,
+      "75%": 1.5,
+      "max": 2.0
+    },
+    "stress_level": {
+      "count": 1200.0,
+      "mean": 5.445833333333334,
+      "std": 2.903289550504269,
+      "min": 1.0,
+      "25%": 3.0,
+      "50%": 5.0,
+      "75%": 8.0,
+      "max": 10.0
+    },
+    "anxiety_level": {
+      "count": 1200.0,
+      "mean": 5.636666666666667,
+      "std": 2.859452618938722,
+      "min": 1.0,
+      "25%": 3.0,
+      "50%": 6.0,
+      "75%": 8.0,
+      "max": 10.0
+    },
+    "addiction_level": {
+      "count": 1200.0,
+      "mean": 5.565,
+      "std": 2.8306274999316803,
+      "min": 1.0,
+      "25%": 3.0,
+      "50%": 6.0,
+      "75%": 8.0,
+      "max": 10.0
+    },
+    "depression_label": {
+      "count": 1200.0,
+      "mean": 0.025833333333333333,
+      "std": 0.15870400548406496,
+      "min": 0.0,
+      "25%": 0.0,
+      "50%": 0.0,
+      "75%": 0.0,
+      "max": 1.0
+    }
+  },
+  "correlation_with_target": {
+    "age": 0.010972536694263749,
+    "daily_social_media_hours": 0.17520080737523958,
+    "sleep_hours": -0.19062963227029944,
+    "screen_time_before_sleep": -0.016501626671909842,
+    "academic_performance": 0.0014407124846457769,
+    "physical_activity": -0.017597682694723536,
+    "stress_level": 0.1704737133539667,
+    "anxiety_level": 0.1695661521916456,
+    "addiction_level": -0.013952087533938557
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "candidate": "gradient_boosting",
+  "best_value": 1.0,
+  "best_params": {
+    "n_estimators": 500,
+    "learning_rate": 0.05612788505223873,
+    "max_depth": 3,
+    "subsample": 0.855919277250694
+  },
+  "n_trials_run": 30,
+  "model_path": "/home/ubuntu/repos/Test-Devin-Opus-4.7-ML/models/final_model.joblib"
+}

@@ -1,0 +1,55 @@
+# Byte-compiled / optimized
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+
+# Virtual envs
+.venv/
+venv/
+env/
+
+# Tooling caches
+.ruff_cache/
+.pytest_cache/
+.mypy_cache/
+.coverage
+coverage.xml
+htmlcov/
+
+# ML artifacts
+mlruns/
+mlartifacts/
+*.pkl
+*.joblib
+
+# Data — never commit raw/processed data
+data/raw/*
+data/processed/*
+data/interim/*
+!data/**/.gitkeep
+
+# Model binaries
+models/*
+!models/.gitkeep
+
+# Reports — keep figures, metrics JSON, and model card checked in (small, useful artefacts)
+
+# Kaggle creds
+.kaggle/
+kaggle.json
+
+# IDE
+.idea/
+.vscode/
+.DS_Store
+
+# Env
+.env
+.env.*
+!.env.example
+
+# uv
+.python-version

@@ -1,0 +1,54 @@
+# Central configuration. Keep tunable knobs here; code reads via teen_mh.config.load_config().
+seed: 42
+
+paths:
+  data_raw: data/raw
+  data_processed: data/processed
+  models: models
+  reports: reports
+  figures: reports/figures
+  metrics: reports/metrics
+  mlruns: mlruns
+
+data:
+  kaggle_slug: algozee/teenager-menthal-healy
+  csv_filename: Teen_Mental_Health_Dataset.csv
+  target: depression_label
+  test_size: 0.2
+  val_size: 0.1  # fraction of train used for held-out validation during HPO
+
+features:
+  numeric:
+    - age
+    - daily_social_media_hours
+    - sleep_hours
+    - screen_time_before_sleep
+    - academic_performance
+    - physical_activity
+    - stress_level
+    - anxiety_level
+    - addiction_level
+  categorical:
+    - gender
+    - platform_usage
+    - social_interaction_level
+
+training:
+  cv_folds: 5
+  scoring: average_precision  # PR-AUC — robust to heavy class imbalance (~2.6% positive)
+  imbalance_strategy: smote   # one of: smote, class_weight, none
+  candidates:
+    - logreg
+    - random_forest
+    - gradient_boosting
+    - xgboost
+    - lightgbm
+
+tuning:
+  n_trials: 30
+  timeout_seconds: 300
+  direction: maximize
+
+mlflow:
+  experiment_name: teen-mental-health
+  tracking_uri: file:./mlruns
