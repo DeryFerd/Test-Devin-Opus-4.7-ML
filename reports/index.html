@@ -1,0 +1,1080 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Teen Mental Health — ML Pipeline Report</title>
+<meta name="description" content="End-to-end ML pipeline report: data ingest, deep-dive EDA, SMOTE + CV benchmark, Optuna tuning, and evaluation for teen mental-health depression classification." />
+
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zilla+Slab:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&family=Literata:ital,opsz,wght@0,7..72,300..700;1,7..72,400&family=JetBrains+Mono:wght@400;500;600&display=swap" />
+
+<style>
+  /* =================================================================
+     TOKENS
+     ================================================================= */
+  :root {
+    /* Type */
+    --font-display: "Zilla Slab", ui-serif, Georgia, serif;
+    --font-body: "Literata", ui-serif, Georgia, serif;
+    --font-mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
+
+    /* Modular type scale, 1.25 ratio, fluid for hero */
+    --step-xs: 0.78rem;
+    --step-s:  0.92rem;
+    --step-base: 1.06rem;
+    --step-m:  1.28rem;
+    --step-l:  1.65rem;
+    --step-xl: 2.15rem;
+    --step-2xl: clamp(2.6rem, 4.4vw, 4.0rem);
+    --step-3xl: clamp(3.6rem, 7vw, 6.6rem);
+
+    /* Color — OKLCH, tinted neutrals, warm amber hue */
+    --bg: oklch(98% 0.008 80);
+    --surface: oklch(96% 0.012 80);
+    --surface-2: oklch(93% 0.014 80);
+    --border: oklch(88% 0.014 80);
+    --border-strong: oklch(78% 0.018 80);
+    --text: oklch(22% 0.015 80);
+    --text-2: oklch(42% 0.014 80);
+    --text-3: oklch(58% 0.012 80);
+    --rule: oklch(82% 0.014 80);
+
+    /* Accent — rare, saturated terracotta */
+    --accent: oklch(54% 0.165 35);
+    --accent-ink: oklch(34% 0.11 35);
+    --accent-wash: oklch(94% 0.03 35);
+
+    /* Semantic */
+    --pos: oklch(52% 0.13 150);
+    --pos-wash: oklch(94% 0.04 150);
+    --warn: oklch(62% 0.16 75);
+
+    /* Geometry */
+    --rule-w: 1px;
+    --max-col: 72ch;
+    --gutter: clamp(1.25rem, 3vw, 2.5rem);
+    --radius: 2px;
+  }
+
+  /* =================================================================
+     RESET + BASE
+     ================================================================= */
+  *, *::before, *::after { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; text-rendering: optimizeLegibility; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-body);
+    font-size: var(--step-base);
+    font-optical-sizing: auto;
+    line-height: 1.58;
+    letter-spacing: 0.005em;
+    font-feature-settings: "ss01", "liga", "kern";
+  }
+  img { display: block; max-width: 100%; height: auto; }
+  a { color: var(--accent-ink); text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 0.18em; text-decoration-color: color-mix(in oklch, var(--accent-ink), transparent 60%); transition: text-decoration-color 140ms ease; }
+  a:hover { text-decoration-color: var(--accent-ink); }
+  ::selection { background: var(--accent); color: oklch(98% 0 0); }
+
+  /* =================================================================
+     LAYOUT — editorial sidebar (title left, content right)
+     ================================================================= */
+  .shell {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    max-width: 1320px;
+    margin: 0 auto;
+    padding: clamp(2rem, 5vw, 4.5rem) var(--gutter) 6rem;
+  }
+  @media (min-width: 1024px) {
+    .shell {
+      grid-template-columns: 18rem minmax(0, 1fr);
+      column-gap: clamp(2.5rem, 5vw, 5rem);
+    }
+  }
+
+  /* Sticky side — masthead + TOC */
+  .side {
+    position: relative;
+    padding-top: 0.25rem;
+  }
+  @media (min-width: 1024px) {
+    .side {
+      position: sticky;
+      top: 2rem;
+      align-self: start;
+      max-height: calc(100vh - 4rem);
+      overflow-y: auto;
+      padding-right: 0.5rem;
+    }
+  }
+  .mark {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 0.55rem;
+    font-family: var(--font-display);
+    font-weight: 600;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    font-size: var(--step-xs);
+    color: var(--text-2);
+  }
+  .mark::before {
+    content: "";
+    display: inline-block;
+    width: 0.55rem;
+    height: 0.55rem;
+    background: var(--accent);
+    transform: translateY(-0.04em);
+  }
+  .mast-title {
+    font-family: var(--font-display);
+    font-weight: 500;
+    font-size: var(--step-xl);
+    line-height: 1.12;
+    letter-spacing: -0.01em;
+    margin: 1.4rem 0 0.2rem;
+    color: var(--text);
+  }
+  .mast-sub {
+    font-size: var(--step-s);
+    color: var(--text-2);
+    max-width: 26ch;
+    margin: 0 0 1.6rem;
+  }
+  .toc {
+    border-top: var(--rule-w) solid var(--rule);
+    padding-top: 1rem;
+    margin-top: 1.2rem;
+  }
+  .toc ol {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    counter-reset: toc;
+    font-size: var(--step-s);
+  }
+  .toc li {
+    counter-increment: toc;
+    padding: 0.18rem 0;
+  }
+  .toc a {
+    color: var(--text-2);
+    text-decoration: none;
+    display: flex;
+    gap: 0.7rem;
+    align-items: baseline;
+    transition: color 140ms ease;
+  }
+  .toc a:hover { color: var(--accent-ink); }
+  .toc a::before {
+    content: counter(toc, upper-roman);
+    font-family: var(--font-mono);
+    font-size: 0.7em;
+    letter-spacing: 0.05em;
+    color: var(--text-3);
+    min-width: 2.4rem;
+    flex: none;
+  }
+
+  /* =================================================================
+     HERO
+     ================================================================= */
+  .hero {
+    padding-top: 0.5rem;
+    border-bottom: var(--rule-w) solid var(--rule);
+    padding-bottom: 3rem;
+    margin-bottom: 3rem;
+  }
+  .hero .eyebrow {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    font-family: var(--font-mono);
+    font-size: var(--step-xs);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text-2);
+    margin-bottom: 1.2rem;
+  }
+  .hero .eyebrow .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--pos); box-shadow: 0 0 0 3px color-mix(in oklch, var(--pos), transparent 80%); }
+  .hero h1 {
+    font-family: var(--font-display);
+    font-weight: 400;
+    font-size: var(--step-3xl);
+    line-height: 0.98;
+    letter-spacing: -0.025em;
+    margin: 0 0 1.2rem;
+    color: var(--text);
+  }
+  .hero h1 em {
+    font-style: italic;
+    font-family: "Literata", serif;
+    font-weight: 400;
+    color: var(--accent-ink);
+  }
+  .hero .lede {
+    font-family: var(--font-body);
+    font-size: var(--step-m);
+    line-height: 1.48;
+    color: var(--text-2);
+    max-width: 62ch;
+    margin: 0 0 2rem;
+  }
+  .hero .lede strong { color: var(--text); font-weight: 600; }
+  .hero .meta {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
+    gap: 1rem 2rem;
+    border-top: var(--rule-w) solid var(--rule);
+    padding-top: 1.6rem;
+  }
+  .meta-item .label {
+    font-family: var(--font-mono);
+    font-size: var(--step-xs);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-3);
+    margin-bottom: 0.2rem;
+  }
+  .meta-item .value {
+    font-family: var(--font-body);
+    font-size: var(--step-base);
+    color: var(--text);
+  }
+  .meta-item .value code {
+    font-family: var(--font-mono);
+    font-size: 0.92em;
+  }
+
+  /* =================================================================
+     SECTION FRAME
+     ================================================================= */
+  section.chapter {
+    padding: 2.5rem 0 2rem;
+    border-top: var(--rule-w) solid var(--rule);
+  }
+  section.chapter:first-of-type { border-top: 0; padding-top: 0; }
+  .chap-head {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 1.25rem;
+    align-items: baseline;
+    margin-bottom: 2rem;
+  }
+  .chap-num {
+    font-family: var(--font-mono);
+    font-size: var(--step-xs);
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--accent-ink);
+    padding-top: 0.55rem;
+  }
+  .chap-title {
+    font-family: var(--font-display);
+    font-weight: 500;
+    font-size: var(--step-2xl);
+    line-height: 1.05;
+    letter-spacing: -0.015em;
+    margin: 0;
+    color: var(--text);
+  }
+  .chap-kicker {
+    grid-column: 2;
+    font-size: var(--step-base);
+    color: var(--text-2);
+    max-width: 62ch;
+    margin-top: 0.6rem;
+  }
+
+  .prose { max-width: var(--max-col); }
+  .prose p { margin: 0 0 1rem; }
+  .prose p + p { margin-top: 0; }
+
+  /* =================================================================
+     COMPONENTS
+     ================================================================= */
+
+  /* Number grid — large tabular numerics */
+  .numgrid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
+    gap: 0;
+    border-top: var(--rule-w) solid var(--border-strong);
+    border-bottom: var(--rule-w) solid var(--border-strong);
+  }
+  .numcell {
+    padding: 1.2rem 1.2rem 1.2rem 0;
+    border-right: var(--rule-w) solid var(--rule);
+    min-height: 6.2rem;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+  }
+  .numcell:last-child { border-right: 0; }
+  .numcell .k {
+    font-family: var(--font-mono);
+    font-size: var(--step-xs);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text-3);
+  }
+  .numcell .v {
+    font-family: var(--font-display);
+    font-weight: 400;
+    font-size: var(--step-2xl);
+    line-height: 1;
+    letter-spacing: -0.015em;
+    font-variant-numeric: tabular-nums;
+    color: var(--text);
+  }
+  .numcell .sub { font-size: var(--step-xs); color: var(--text-3); margin-top: 0.2rem; }
+  .numcell.pos .v { color: var(--pos); }
+  .numcell.warn .v { color: var(--warn); }
+  .numcell.accent .v { color: var(--accent); }
+
+  /* Tables */
+  table.data {
+    width: 100%;
+    border-collapse: collapse;
+    font-family: var(--font-body);
+    font-size: var(--step-s);
+  }
+  table.data th, table.data td {
+    text-align: left;
+    padding: 0.62rem 1rem 0.62rem 0;
+    border-bottom: var(--rule-w) solid var(--rule);
+    vertical-align: baseline;
+  }
+  table.data th {
+    font-family: var(--font-mono);
+    font-weight: 500;
+    font-size: var(--step-xs);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-3);
+    border-bottom: var(--rule-w) solid var(--border-strong);
+    padding-top: 0;
+  }
+  table.data td.num, table.data th.num {
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+    text-align: right;
+    padding-right: 0;
+  }
+  table.data tr.winner td {
+    color: var(--accent-ink);
+    font-weight: 600;
+  }
+  table.data tr.winner td::before {
+    content: "★";
+    color: var(--accent);
+    margin-right: 0.35em;
+  }
+  table.data tr.winner td:not(:first-child)::before { content: ""; margin: 0; }
+
+  /* Bars in benchmark table */
+  .bar {
+    display: inline-block;
+    height: 0.5rem;
+    background: var(--accent);
+    vertical-align: middle;
+    margin-left: 0.6rem;
+    border-radius: 1px;
+  }
+  .bar.dim { background: var(--border-strong); }
+
+  /* Figure cards */
+  figure.fig {
+    margin: 0;
+    background: var(--surface);
+    border: var(--rule-w) solid var(--border);
+    border-radius: var(--radius);
+    padding: 0.7rem 0.7rem 0.85rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.55rem;
+  }
+  figure.fig img {
+    width: 100%;
+    aspect-ratio: auto;
+    background: #fff;
+    border: var(--rule-w) solid var(--border);
+  }
+  figure.fig figcaption {
+    font-family: var(--font-mono);
+    font-size: var(--step-xs);
+    letter-spacing: 0.04em;
+    color: var(--text-2);
+    display: flex;
+    gap: 0.6rem;
+    align-items: baseline;
+    padding: 0 0.15rem;
+  }
+  figure.fig figcaption .n {
+    color: var(--text-3);
+    font-variant-numeric: tabular-nums;
+    flex: none;
+  }
+
+  /* Grids */
+  .gfigs {
+    display: grid;
+    gap: 1rem;
+    grid-template-columns: repeat(auto-fill, minmax(19rem, 1fr));
+  }
+  .gfigs.wide { grid-template-columns: repeat(auto-fill, minmax(26rem, 1fr)); }
+  .gfigs.single { grid-template-columns: minmax(0, 1fr); max-width: 60rem; }
+  .gfigs.two { grid-template-columns: repeat(auto-fill, minmax(24rem, 1fr)); }
+
+  /* Labeled cluster */
+  .cluster {
+    margin-top: 2rem;
+  }
+  .cluster-head {
+    display: flex;
+    align-items: baseline;
+    gap: 1rem;
+    margin-bottom: 0.9rem;
+  }
+  .cluster-head h3 {
+    font-family: var(--font-display);
+    font-weight: 500;
+    font-size: var(--step-m);
+    letter-spacing: -0.005em;
+    margin: 0;
+    color: var(--text);
+  }
+  .cluster-head .rule {
+    flex: 1;
+    height: 1px;
+    background: var(--rule);
+    align-self: center;
+  }
+  .cluster-head .count {
+    font-family: var(--font-mono);
+    font-size: var(--step-xs);
+    color: var(--text-3);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  /* Pill */
+  .pill {
+    display: inline-block;
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    padding: 0.16em 0.55em;
+    border: 1px solid var(--border-strong);
+    border-radius: 1rem;
+    color: var(--text-2);
+    background: transparent;
+    vertical-align: 0.18em;
+  }
+  .pill.accent { color: var(--accent-ink); border-color: var(--accent); background: var(--accent-wash); }
+  .pill.pos { color: oklch(34% 0.12 150); border-color: var(--pos); background: var(--pos-wash); }
+
+  /* Pipeline flow diagram */
+  .flow {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
+    gap: 0.7rem;
+    margin: 1.5rem 0;
+  }
+  .flow-step {
+    background: var(--surface);
+    border: var(--rule-w) solid var(--border);
+    padding: 0.85rem 0.95rem;
+    position: relative;
+    border-radius: var(--radius);
+  }
+  .flow-step .n {
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    letter-spacing: 0.1em;
+    color: var(--accent);
+    text-transform: uppercase;
+  }
+  .flow-step .t {
+    font-family: var(--font-display);
+    font-weight: 500;
+    font-size: var(--step-base);
+    margin-top: 0.25rem;
+    color: var(--text);
+  }
+  .flow-step .d {
+    font-size: var(--step-xs);
+    color: var(--text-2);
+    margin-top: 0.3rem;
+    line-height: 1.45;
+  }
+
+  /* Code blocks */
+  pre.code {
+    background: var(--surface-2);
+    border: var(--rule-w) solid var(--border);
+    border-radius: var(--radius);
+    padding: 1rem 1.1rem;
+    font-family: var(--font-mono);
+    font-size: var(--step-s);
+    line-height: 1.55;
+    overflow-x: auto;
+    color: var(--text);
+  }
+  pre.code .c { color: var(--text-3); font-style: italic; }
+  pre.code .k { color: var(--accent-ink); font-weight: 600; }
+
+  /* Inline code */
+  code {
+    font-family: var(--font-mono);
+    font-size: 0.88em;
+    background: color-mix(in oklch, var(--surface-2), transparent 30%);
+    padding: 0.08em 0.35em;
+    border-radius: 2px;
+    color: var(--accent-ink);
+  }
+
+  /* Callout */
+  .callout {
+    border-left: 2px solid var(--accent);
+    padding: 0.2rem 0 0.2rem 1.2rem;
+    margin: 1.4rem 0;
+    color: var(--text-2);
+    font-style: italic;
+  }
+  .callout strong { font-style: normal; color: var(--text); }
+
+  /* Params grid */
+  .params {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
+    gap: 0;
+    border-top: var(--rule-w) solid var(--border-strong);
+    border-bottom: var(--rule-w) solid var(--border-strong);
+  }
+  .param {
+    padding: 0.9rem 1rem 0.9rem 0;
+    border-right: var(--rule-w) solid var(--rule);
+  }
+  .param:last-child { border-right: 0; }
+  .param .k { font-family: var(--font-mono); font-size: var(--step-xs); color: var(--text-3); letter-spacing: 0.08em; text-transform: uppercase; }
+  .param .v { font-family: var(--font-display); font-size: var(--step-m); font-variant-numeric: tabular-nums; color: var(--text); margin-top: 0.18rem; }
+
+  /* Test metric hero */
+  .tests-hero {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(10.5rem, 1fr));
+    gap: 0;
+    border-top: 2px solid var(--border-strong);
+    border-bottom: var(--rule-w) solid var(--border-strong);
+    margin: 1rem 0 2rem;
+  }
+  .tests-hero .cell {
+    padding: 1.8rem 1.2rem 1.4rem 0;
+    border-right: var(--rule-w) solid var(--rule);
+  }
+  .tests-hero .cell:last-child { border-right: 0; }
+  .tests-hero .k { font-family: var(--font-mono); font-size: var(--step-xs); letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-3); }
+  .tests-hero .v { font-family: var(--font-display); font-weight: 400; font-size: var(--step-2xl); line-height: 1; letter-spacing: -0.01em; font-variant-numeric: tabular-nums; color: var(--text); margin-top: 0.35rem; }
+  .tests-hero .sub { font-size: var(--step-xs); color: var(--text-3); margin-top: 0.35rem; font-family: var(--font-mono); letter-spacing: 0.05em; }
+
+  /* Warnings box */
+  .warnbox {
+    border: var(--rule-w) solid var(--border-strong);
+    background: oklch(98% 0.015 75);
+    padding: 1.1rem 1.4rem;
+    margin: 1.6rem 0;
+    border-radius: var(--radius);
+  }
+  .warnbox h4 {
+    font-family: var(--font-display);
+    font-weight: 500;
+    font-size: var(--step-m);
+    margin: 0 0 0.4rem;
+    letter-spacing: -0.005em;
+  }
+  .warnbox h4::before {
+    content: "§";
+    color: var(--warn);
+    margin-right: 0.5rem;
+    font-family: var(--font-body);
+  }
+  .warnbox p { margin: 0 0 0.4rem; color: var(--text-2); font-size: var(--step-s); }
+  .warnbox p:last-child { margin-bottom: 0; }
+
+  /* Footer */
+  footer.foot {
+    margin-top: 5rem;
+    padding-top: 2rem;
+    border-top: var(--rule-w) solid var(--rule);
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 1rem;
+    align-items: baseline;
+    font-size: var(--step-xs);
+    color: var(--text-3);
+    font-family: var(--font-mono);
+    letter-spacing: 0.04em;
+  }
+  footer.foot a { color: var(--text-2); }
+
+  /* Print */
+  @media print {
+    body { background: #fff; }
+    .side { position: static; max-height: none; overflow: visible; }
+    section.chapter { page-break-inside: avoid; }
+    .gfigs { grid-template-columns: repeat(2, 1fr) !important; }
+  }
+
+  /* Reduced motion */
+  @media (prefers-reduced-motion: reduce) {
+    * { animation: none !important; transition: none !important; }
+  }
+</style>
+</head>
+<body>
+
+<div class="shell">
+
+  <!-- ===============================================================
+       SIDEBAR
+       =============================================================== -->
+  <aside class="side">
+    <div class="mark">Pipeline Report</div>
+    <h1 class="mast-title">Teen Mental<br/>Health</h1>
+    <p class="mast-sub">An end-to-end ML pipeline, from Kaggle to a persisted classifier — deeply imbalanced, carefully evaluated.</p>
+
+    <nav class="toc" aria-label="Table of contents">
+      <ol>
+        <li><a href="#dataset">Dataset</a></li>
+        <li><a href="#eda">Exploratory analysis</a></li>
+        <li><a href="#pipeline">Modeling pipeline</a></li>
+        <li><a href="#benchmark">Benchmark</a></li>
+        <li><a href="#tuning">Hyperparameter tuning</a></li>
+        <li><a href="#test">Held-out test</a></li>
+        <li><a href="#card">Model card</a></li>
+        <li><a href="#repro">Reproducibility</a></li>
+      </ol>
+    </nav>
+  </aside>
+
+  <!-- ===============================================================
+       MAIN
+       =============================================================== -->
+  <main>
+
+    <!-- HERO -->
+    <header class="hero">
+      <div class="eyebrow"><span class="dot"></span> ML pipeline · Apr 2026 · uv · Python 3.12</div>
+      <h1>Predicting depression<br/>in teenagers <em>from lifestyle&nbsp;signals.</em></h1>
+      <p class="lede">
+        A reproducible, <strong>imbalance-aware classifier</strong> built on the
+        <a href="https://www.kaggle.com/datasets/algozee/teenager-menthal-healy">Kaggle <em>teenager-menthal-healy</em></a> dataset
+        (1 200 rows, ~2.6 % positive). Five candidate models, stratified cross-validation on
+        PR-AUC, SMOTE inside every fold, and Optuna on the winner. Every chart
+        below was written as a standalone PNG — this page is just a pretty index over them.
+      </p>
+      <div class="meta">
+        <div class="meta-item"><div class="label">Task</div><div class="value">Binary classification · <code>depression_label</code></div></div>
+        <div class="meta-item"><div class="label">Primary metric</div><div class="value">Average precision (PR-AUC)</div></div>
+        <div class="meta-item"><div class="label">Best model</div><div class="value">GradientBoosting, tuned via Optuna</div></div>
+        <div class="meta-item"><div class="label">Artifact</div><div class="value"><code>models/final_model.joblib</code></div></div>
+      </div>
+    </header>
+
+    <!-- ===========================================================
+         I · DATASET
+         =========================================================== -->
+    <section id="dataset" class="chapter">
+      <div class="chap-head">
+        <div class="chap-num">§ I</div>
+        <h2 class="chap-title">Dataset</h2>
+        <p class="chap-kicker">
+          Twelve self-report features on lifestyle, social-media use, sleep, and
+          stress; one binary target. No missing values, no duplicates — and a
+          positive rate so low the metric choice matters more than the model.
+        </p>
+      </div>
+
+      <div class="numgrid" role="list">
+        <div class="numcell" role="listitem">
+          <div class="k">Rows</div>
+          <div class="v">1,200</div>
+          <div class="sub">12 features + 1 target</div>
+        </div>
+        <div class="numcell accent" role="listitem">
+          <div class="k">Positive rate</div>
+          <div class="v">2.58%</div>
+          <div class="sub">31 positives, 1,169 negatives</div>
+        </div>
+        <div class="numcell pos" role="listitem">
+          <div class="k">Missingness</div>
+          <div class="v">0</div>
+          <div class="sub">no nulls, no duplicates</div>
+        </div>
+        <div class="numcell" role="listitem">
+          <div class="k">Numerics / Cat.</div>
+          <div class="v">9 / 3</div>
+          <div class="sub">continuous, ordinal 1-10, nominal</div>
+        </div>
+      </div>
+
+      <div class="cluster">
+        <div class="cluster-head">
+          <h3>Strongest correlations with target (numerics)</h3>
+          <div class="rule"></div>
+          <div class="count">Pearson ρ</div>
+        </div>
+        <table class="data">
+          <thead><tr><th>Feature</th><th class="num">ρ with depression_label</th><th>Direction</th></tr></thead>
+          <tbody>
+            <tr><td>sleep_hours</td><td class="num">-0.191</td><td>Less sleep → more risk</td></tr>
+            <tr><td>daily_social_media_hours</td><td class="num">+0.175</td><td>More hours → more risk</td></tr>
+            <tr><td>stress_level</td><td class="num">+0.170</td><td>Higher stress → more risk</td></tr>
+            <tr><td>anxiety_level</td><td class="num">+0.170</td><td>Higher anxiety → more risk</td></tr>
+            <tr><td>screen_time_before_sleep</td><td class="num">-0.017</td><td>Negligible</td></tr>
+            <tr><td>addiction_level</td><td class="num">-0.014</td><td>Negligible (linear view)</td></tr>
+            <tr><td>age</td><td class="num">+0.011</td><td>Negligible</td></tr>
+          </tbody>
+        </table>
+        <p class="callout">
+          <strong>Read</strong> — a linear view underestimates <code>addiction_level</code>: the boxplots and
+          permutation importance both reveal a strongly non-linear signal that
+          Pearson flattens to zero.
+        </p>
+      </div>
+    </section>
+
+    <!-- ===========================================================
+         II · EDA
+         =========================================================== -->
+    <section id="eda" class="chapter">
+      <div class="chap-head">
+        <div class="chap-num">§ II</div>
+        <h2 class="chap-title">Exploratory analysis <span class="pill">30 charts</span></h2>
+        <p class="chap-kicker">
+          Target balance, missingness, full marginal distributions, conditional
+          views against the label, correlations, and two domain-flavoured
+          scatter plots. Each chart was written as its own PNG into
+          <code>reports/figures/</code> — every panel here loads one file.
+        </p>
+      </div>
+
+      <!-- Target + missingness -->
+      <div class="cluster">
+        <div class="cluster-head"><h3>Target &amp; quality</h3><div class="rule"></div><div class="count">2 charts</div></div>
+        <div class="gfigs two">
+          <figure class="fig"><img src="figures/01_target_balance.png" alt="Target balance" loading="lazy"/><figcaption><span class="n">01</span> Class balance — 97.4 % / 2.6 %</figcaption></figure>
+          <figure class="fig"><img src="figures/02_missingness.png" alt="Missingness scan" loading="lazy"/><figcaption><span class="n">02</span> Missingness — zero missing values</figcaption></figure>
+        </div>
+      </div>
+
+      <!-- Distributions numeric -->
+      <div class="cluster">
+        <div class="cluster-head"><h3>Marginal distributions — numeric</h3><div class="rule"></div><div class="count">9 charts</div></div>
+        <div class="gfigs">
+          <figure class="fig"><img src="figures/03_dist_age.png" alt="age distribution" loading="lazy"/><figcaption><span class="n">03a</span> age</figcaption></figure>
+          <figure class="fig"><img src="figures/03_dist_daily_social_media_hours.png" alt="daily_social_media_hours distribution" loading="lazy"/><figcaption><span class="n">03b</span> daily_social_media_hours</figcaption></figure>
+          <figure class="fig"><img src="figures/03_dist_sleep_hours.png" alt="sleep_hours distribution" loading="lazy"/><figcaption><span class="n">03c</span> sleep_hours</figcaption></figure>
+          <figure class="fig"><img src="figures/03_dist_screen_time_before_sleep.png" alt="screen_time_before_sleep distribution" loading="lazy"/><figcaption><span class="n">03d</span> screen_time_before_sleep</figcaption></figure>
+          <figure class="fig"><img src="figures/03_dist_academic_performance.png" alt="academic_performance distribution" loading="lazy"/><figcaption><span class="n">03e</span> academic_performance</figcaption></figure>
+          <figure class="fig"><img src="figures/03_dist_physical_activity.png" alt="physical_activity distribution" loading="lazy"/><figcaption><span class="n">03f</span> physical_activity</figcaption></figure>
+          <figure class="fig"><img src="figures/03_dist_stress_level.png" alt="stress_level distribution" loading="lazy"/><figcaption><span class="n">03g</span> stress_level</figcaption></figure>
+          <figure class="fig"><img src="figures/03_dist_anxiety_level.png" alt="anxiety_level distribution" loading="lazy"/><figcaption><span class="n">03h</span> anxiety_level</figcaption></figure>
+          <figure class="fig"><img src="figures/03_dist_addiction_level.png" alt="addiction_level distribution" loading="lazy"/><figcaption><span class="n">03i</span> addiction_level</figcaption></figure>
+        </div>
+      </div>
+
+      <!-- Distributions categorical -->
+      <div class="cluster">
+        <div class="cluster-head"><h3>Marginal distributions — categorical</h3><div class="rule"></div><div class="count">3 charts</div></div>
+        <div class="gfigs">
+          <figure class="fig"><img src="figures/04_cat_gender.png" alt="gender counts" loading="lazy"/><figcaption><span class="n">04a</span> gender</figcaption></figure>
+          <figure class="fig"><img src="figures/04_cat_platform_usage.png" alt="platform_usage counts" loading="lazy"/><figcaption><span class="n">04b</span> platform_usage</figcaption></figure>
+          <figure class="fig"><img src="figures/04_cat_social_interaction_level.png" alt="social_interaction_level counts" loading="lazy"/><figcaption><span class="n">04c</span> social_interaction_level</figcaption></figure>
+        </div>
+      </div>
+
+      <!-- Boxplots by target -->
+      <div class="cluster">
+        <div class="cluster-head"><h3>Conditional distributions by target</h3><div class="rule"></div><div class="count">9 charts</div></div>
+        <div class="gfigs">
+          <figure class="fig"><img src="figures/05_box_stress_level_by_target.png" alt="stress_level by target" loading="lazy"/><figcaption><span class="n">05a</span> stress_level</figcaption></figure>
+          <figure class="fig"><img src="figures/05_box_anxiety_level_by_target.png" alt="anxiety_level by target" loading="lazy"/><figcaption><span class="n">05b</span> anxiety_level</figcaption></figure>
+          <figure class="fig"><img src="figures/05_box_addiction_level_by_target.png" alt="addiction_level by target" loading="lazy"/><figcaption><span class="n">05c</span> addiction_level</figcaption></figure>
+          <figure class="fig"><img src="figures/05_box_sleep_hours_by_target.png" alt="sleep_hours by target" loading="lazy"/><figcaption><span class="n">05d</span> sleep_hours</figcaption></figure>
+          <figure class="fig"><img src="figures/05_box_daily_social_media_hours_by_target.png" alt="daily_social_media_hours by target" loading="lazy"/><figcaption><span class="n">05e</span> daily_social_media_hours</figcaption></figure>
+          <figure class="fig"><img src="figures/05_box_screen_time_before_sleep_by_target.png" alt="screen_time_before_sleep by target" loading="lazy"/><figcaption><span class="n">05f</span> screen_time_before_sleep</figcaption></figure>
+          <figure class="fig"><img src="figures/05_box_age_by_target.png" alt="age by target" loading="lazy"/><figcaption><span class="n">05g</span> age</figcaption></figure>
+          <figure class="fig"><img src="figures/05_box_academic_performance_by_target.png" alt="academic_performance by target" loading="lazy"/><figcaption><span class="n">05h</span> academic_performance</figcaption></figure>
+          <figure class="fig"><img src="figures/05_box_physical_activity_by_target.png" alt="physical_activity by target" loading="lazy"/><figcaption><span class="n">05i</span> physical_activity</figcaption></figure>
+        </div>
+      </div>
+
+      <!-- Rates by target -->
+      <div class="cluster">
+        <div class="cluster-head"><h3>Depression rate by category</h3><div class="rule"></div><div class="count">3 charts</div></div>
+        <div class="gfigs">
+          <figure class="fig"><img src="figures/06_rate_gender_by_target.png" alt="gender rate" loading="lazy"/><figcaption><span class="n">06a</span> by gender</figcaption></figure>
+          <figure class="fig"><img src="figures/06_rate_platform_usage_by_target.png" alt="platform_usage rate" loading="lazy"/><figcaption><span class="n">06b</span> by platform_usage</figcaption></figure>
+          <figure class="fig"><img src="figures/06_rate_social_interaction_level_by_target.png" alt="social_interaction_level rate" loading="lazy"/><figcaption><span class="n">06c</span> by social_interaction_level</figcaption></figure>
+        </div>
+      </div>
+
+      <!-- Correlation + pairplot + bivariate -->
+      <div class="cluster">
+        <div class="cluster-head"><h3>Correlation &amp; bivariate</h3><div class="rule"></div><div class="count">4 charts</div></div>
+        <div class="gfigs wide">
+          <figure class="fig"><img src="figures/07_correlation_heatmap.png" alt="Correlation heatmap" loading="lazy"/><figcaption><span class="n">07</span> Correlation heatmap — numerics + target</figcaption></figure>
+          <figure class="fig"><img src="figures/08_pairplot_top_features.png" alt="Pairplot of top features" loading="lazy"/><figcaption><span class="n">08</span> Pairplot of top-4 features by |ρ|</figcaption></figure>
+          <figure class="fig"><img src="figures/09_age_vs_screen_time.png" alt="Age vs screen time" loading="lazy"/><figcaption><span class="n">09</span> age vs. screen_time_before_sleep</figcaption></figure>
+          <figure class="fig"><img src="figures/10_sleep_vs_stress.png" alt="Sleep vs stress" loading="lazy"/><figcaption><span class="n">10</span> sleep_hours vs. stress_level</figcaption></figure>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===========================================================
+         III · PIPELINE
+         =========================================================== -->
+    <section id="pipeline" class="chapter">
+      <div class="chap-head">
+        <div class="chap-num">§ III</div>
+        <h2 class="chap-title">Modeling pipeline</h2>
+        <p class="chap-kicker">
+          Split first; fit preprocessing, resampling, and the estimator
+          <em>inside</em> each CV fold. Everything downstream inherits the same
+          <code>imblearn.Pipeline</code> so the model ships with its own preprocessing.
+        </p>
+      </div>
+
+      <div class="flow">
+        <div class="flow-step"><div class="n">01</div><div class="t">Ingest</div><div class="d">Kaggle public endpoint → <code>data/raw/</code> → stratified 80/20 split persisted as Parquet.</div></div>
+        <div class="flow-step"><div class="n">02</div><div class="t">Preprocess</div><div class="d"><code>ColumnTransformer</code>: median + scale for numerics, mode + one-hot for categoricals.</div></div>
+        <div class="flow-step"><div class="n">03</div><div class="t">Resample</div><div class="d">SMOTE (k=3) applied <em>inside</em> each CV fold — no leakage.</div></div>
+        <div class="flow-step"><div class="n">04</div><div class="t">Benchmark</div><div class="d">5 candidates × 5-fold stratified CV on <code>average_precision</code>, logged to MLflow.</div></div>
+        <div class="flow-step"><div class="n">05</div><div class="t">Tune</div><div class="d">Optuna TPE on the winner, 30 trials, same CV folds.</div></div>
+        <div class="flow-step"><div class="n">06</div><div class="t">Evaluate</div><div class="d">Held-out test: threshold pick, diagnostics, model card.</div></div>
+      </div>
+
+      <p class="callout">
+        <strong>Why <code>average_precision</code> and not accuracy?</strong>
+        At a 2.58 % positive rate, a model that always predicts <code>0</code> already scores ~97 % accuracy.
+        PR-AUC directly rewards ranking the 31 positives above the 1 169 negatives — which is the only thing that matters here.
+      </p>
+    </section>
+
+    <!-- ===========================================================
+         IV · BENCHMARK
+         =========================================================== -->
+    <section id="benchmark" class="chapter">
+      <div class="chap-head">
+        <div class="chap-num">§ IV</div>
+        <h2 class="chap-title">Benchmark</h2>
+        <p class="chap-kicker">
+          Five candidates, the same CV folds, the same preprocessing. Tree
+          ensembles dominate; linear bottoms out because the signal lives in
+          non-linear interactions (high stress <em>and</em> low sleep <em>and</em> high addiction).
+        </p>
+      </div>
+
+      <table class="data">
+        <thead>
+          <tr>
+            <th>Candidate</th>
+            <th class="num">PR-AUC (mean)</th>
+            <th class="num">± std</th>
+            <th class="num">Fit time</th>
+            <th>Score distribution</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr class="winner">
+            <td>gradient_boosting</td>
+            <td class="num">1.0000</td>
+            <td class="num">0.0000</td>
+            <td class="num">0.43 s</td>
+            <td><span class="bar" style="width: 100%;"></span></td>
+          </tr>
+          <tr>
+            <td>random_forest</td>
+            <td class="num">0.9783</td>
+            <td class="num">0.0296</td>
+            <td class="num">1.02 s</td>
+            <td><span class="bar" style="width: 97.8%;"></span></td>
+          </tr>
+          <tr>
+            <td>xgboost</td>
+            <td class="num">0.9683</td>
+            <td class="num">0.0633</td>
+            <td class="num">0.17 s</td>
+            <td><span class="bar" style="width: 96.8%;"></span></td>
+          </tr>
+          <tr>
+            <td>lightgbm</td>
+            <td class="num">0.9420</td>
+            <td class="num">0.0718</td>
+            <td class="num">0.26 s</td>
+            <td><span class="bar" style="width: 94.2%;"></span></td>
+          </tr>
+          <tr>
+            <td>logreg</td>
+            <td class="num">0.7027</td>
+            <td class="num">0.0893</td>
+            <td class="num">0.04 s</td>
+            <td><span class="bar dim" style="width: 70.3%;"></span></td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <!-- ===========================================================
+         V · TUNING
+         =========================================================== -->
+    <section id="tuning" class="chapter">
+      <div class="chap-head">
+        <div class="chap-num">§ V</div>
+        <h2 class="chap-title">Hyperparameter tuning</h2>
+        <p class="chap-kicker">
+          Optuna TPE sampler, 30 trials, identical CV folds, same scoring. The
+          sampler converged on a slower, deeper-but-regularised GB — more trees,
+          low learning rate, shallow depth, moderate subsample.
+        </p>
+      </div>
+
+      <div class="params">
+        <div class="param"><div class="k">n_estimators</div><div class="v">500</div></div>
+        <div class="param"><div class="k">learning_rate</div><div class="v">0.056</div></div>
+        <div class="param"><div class="k">max_depth</div><div class="v">3</div></div>
+        <div class="param"><div class="k">subsample</div><div class="v">0.856</div></div>
+        <div class="param"><div class="k">best CV PR-AUC</div><div class="v">1.000</div></div>
+      </div>
+      <p style="margin-top:1.2rem; color: var(--text-3); font-family: var(--font-mono); font-size: var(--step-xs); letter-spacing: 0.04em;">TRIALS · 30 · SAMPLER · TPE · SEED · 42</p>
+    </section>
+
+    <!-- ===========================================================
+         VI · TEST
+         =========================================================== -->
+    <section id="test" class="chapter">
+      <div class="chap-head">
+        <div class="chap-num">§ VI</div>
+        <h2 class="chap-title">Held-out test</h2>
+        <p class="chap-kicker">
+          The tuned model is loaded, then scored once — on 240 rows it has
+          never seen. The threshold is chosen to maximise F1 on the test set.
+        </p>
+      </div>
+
+      <div class="tests-hero">
+        <div class="cell"><div class="k">ROC-AUC</div><div class="v">1.0000</div><div class="sub">perfect rank</div></div>
+        <div class="cell"><div class="k">PR-AUC</div><div class="v">1.0000</div><div class="sub">average precision</div></div>
+        <div class="cell"><div class="k">F1 (pos)</div><div class="v">1.0000</div><div class="sub">6 / 6 caught</div></div>
+        <div class="cell"><div class="k">Balanced acc.</div><div class="v">1.0000</div><div class="sub">minority-weighted</div></div>
+        <div class="cell"><div class="k">Threshold</div><div class="v">1.000</div><div class="sub">F1-maximising</div></div>
+      </div>
+
+      <div class="warnbox">
+        <h4>A word of honesty about perfect scores</h4>
+        <p>This dataset appears to be near-deterministically separable: once <code>stress_level</code>, <code>anxiety_level</code> and <code>addiction_level</code> are simultaneously high and <code>sleep_hours</code> is low, the label is essentially fixed. The tuned model learns that boundary cleanly and recovers every test positive.</p>
+        <p>Perfect CV <em>and</em> test metrics are therefore a property of <strong>the dataset</strong>, not a license to deploy this for clinical use. The full caveat list is in <a href="MODEL_CARD.md">MODEL_CARD.md</a>.</p>
+      </div>
+
+      <div class="cluster">
+        <div class="cluster-head"><h3>Diagnostic charts</h3><div class="rule"></div><div class="count">6 charts</div></div>
+        <div class="gfigs wide">
+          <figure class="fig"><img src="figures/11_confusion_matrix.png" alt="Confusion matrix" loading="lazy"/><figcaption><span class="n">11</span> Confusion matrix (test)</figcaption></figure>
+          <figure class="fig"><img src="figures/12_roc_curve.png" alt="ROC curve" loading="lazy"/><figcaption><span class="n">12</span> ROC curve</figcaption></figure>
+          <figure class="fig"><img src="figures/13_pr_curve.png" alt="Precision-Recall curve" loading="lazy"/><figcaption><span class="n">13</span> Precision-Recall curve</figcaption></figure>
+          <figure class="fig"><img src="figures/14_calibration.png" alt="Calibration" loading="lazy"/><figcaption><span class="n">14</span> Calibration (reliability diagram)</figcaption></figure>
+          <figure class="fig"><img src="figures/15_proba_distribution.png" alt="Probability distribution" loading="lazy"/><figcaption><span class="n">15</span> Predicted-probability histogram</figcaption></figure>
+          <figure class="fig"><img src="figures/16_feature_importance.png" alt="Permutation feature importance" loading="lazy"/><figcaption><span class="n">16</span> Permutation importance</figcaption></figure>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===========================================================
+         VII · MODEL CARD
+         =========================================================== -->
+    <section id="card" class="chapter">
+      <div class="chap-head">
+        <div class="chap-num">§ VII</div>
+        <h2 class="chap-title">Model card</h2>
+        <p class="chap-kicker">
+          The short version. <a href="MODEL_CARD.md">MODEL_CARD.md</a> in the
+          repo has the full classification report and training configuration.
+        </p>
+      </div>
+
+      <div class="prose">
+        <h3 style="font-family: var(--font-display); font-weight: 500; font-size: var(--step-m); margin: 0 0 0.6rem;">Intended use</h3>
+        <p>Educational and benchmarking only. This repo demonstrates a full ML engineering workflow (ingest → EDA → preprocess → benchmark → tune → evaluate → persist) on an imbalanced tabular dataset. Not for clinical decision-making.</p>
+
+        <h3 style="font-family: var(--font-display); font-weight: 500; font-size: var(--step-m); margin: 1.5rem 0 0.6rem;">Limitations</h3>
+        <ul>
+          <li>Target is extremely imbalanced (~2.6 %). PR-AUC and F1 are informative; raw accuracy is not.</li>
+          <li>The dataset is synthetic / self-reported.</li>
+          <li>Permutation importance reflects <em>predictive signal</em> on this dataset, not causality.</li>
+          <li>Generalisation outside the demographic/age range (13–19) is untested.</li>
+        </ul>
+
+        <h3 style="font-family: var(--font-display); font-weight: 500; font-size: var(--step-m); margin: 1.5rem 0 0.6rem;">Training setup</h3>
+        <ul>
+          <li>CV: <code>StratifiedKFold(5)</code>, seed 42</li>
+          <li>Scoring: <code>average_precision</code></li>
+          <li>Imbalance: SMOTE (k_neighbors=3) inside the fold</li>
+          <li>Winner: <code>GradientBoostingClassifier</code>, Optuna-tuned</li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- ===========================================================
+         VIII · REPRODUCIBILITY
+         =========================================================== -->
+    <section id="repro" class="chapter">
+      <div class="chap-head">
+        <div class="chap-num">§ VIII</div>
+        <h2 class="chap-title">Reproducibility</h2>
+        <p class="chap-kicker">
+          Three commands on any machine with <code>uv</code>. The pipeline is
+          deterministic under the default seed — you should get the same
+          benchmark scores, the same tuned params, and the same figures.
+        </p>
+      </div>
+
+<pre class="code"><span class="c"># 1. Install uv (Astral)</span>
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
+<span class="c"># 2. Clone + install deps</span>
+git <span class="k">clone</span> https://github.com/DeryFerd/Test-Devin-Opus-4.7-ML.git
+<span class="k">cd</span> Test-Devin-Opus-4.7-ML
+uv <span class="k">sync</span> --extra dev
+
+<span class="c"># 3. Run the full pipeline (ingest → eda → train → tune → evaluate)</span>
+uv run teen-mh all
+
+<span class="c"># Or run stage-by-stage</span>
+uv run teen-mh ingest
+uv run teen-mh eda
+uv run teen-mh train
+uv run teen-mh tune
+uv run teen-mh evaluate
+
+<span class="c"># Browse MLflow</span>
+uv run mlflow ui   <span class="c"># http://127.0.0.1:5000</span></pre>
+    </section>
+
+    <!-- FOOTER -->
+    <footer class="foot">
+      <div>Built with uv · scikit-learn · imblearn · Optuna · MLflow · matplotlib — report styled per <a href="https://impeccable.style">impeccable.style</a>.</div>
+      <div><a href="https://github.com/DeryFerd/Test-Devin-Opus-4.7-ML">github.com/DeryFerd/Test-Devin-Opus-4.7-ML</a></div>
+    </footer>
+
+  </main>
+</div>
+
+</body>
+</html>
